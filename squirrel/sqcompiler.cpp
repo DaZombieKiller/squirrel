@@ -954,6 +954,16 @@ public:
                     ParseTableOrClass(',',TK_ATTR_CLOSE);
                     hasattrs = true;
                 }
+                // [zombie] allow {{ ... }} as alternative syntax for attributes
+                else if(_token == _SC('{')) {
+                    Lex();
+                    if(_token == _SC('{')) {
+                        _fs->AddInstruction(_OP_NEWOBJ, _fs->PushTarget(), 0, NOT_TABLE); Lex();
+                        ParseTableOrClass(_SC(','), _SC('}'));
+                        hasattrs = true;
+                        Expect(_SC('}'));
+                    }
+                }
                 if(_token == TK_STATIC) {
                     isstatic = true;
                     Lex();
@@ -1424,7 +1434,8 @@ public:
     {
         SQInteger base = -1;
         SQInteger attrs = -1;
-        if(_token == TK_EXTENDS) {
+        // [zombie] allow colon as an alternative to 'extends'
+        if(_token == TK_EXTENDS || _token == _SC(':')) {
             Lex(); Expression();
             base = _fs->TopTarget();
         }
@@ -1435,6 +1446,14 @@ public:
             attrs = _fs->TopTarget();
         }
         Expect(_SC('{'));
+        // [zombie] allow {{ ... }} as alternative syntax for attributes
+        if(_token == _SC('{') && attrs == -1) {
+            _fs->AddInstruction(_OP_NEWOBJ, _fs->PushTarget(), 0, NOT_TABLE); Lex();
+            ParseTableOrClass(_SC(','), _SC('}'));
+            attrs = _fs->TopTarget();
+            Expect(_SC('}'));
+            Expect(_SC('{'));
+        }
         if(attrs != -1) _fs->PopTarget();
         if(base != -1) _fs->PopTarget();
         _fs->AddInstruction(_OP_NEWOBJ, _fs->PushTarget(), base, attrs,NOT_CLASS);
